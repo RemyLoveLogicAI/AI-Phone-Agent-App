@@ -1,0 +1,27 @@
+{
+  "name": "ai-phone-agent-app",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "node server.js",
+    "build": "next build",
+    "start": "node server.js",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "clsx": "latest",
+    "framer-motion": "latest",
+    "lucide-react": "latest",
+    "next": "latest",
+    "openai": "^6.9.1",
+    "react": "latest",
+    "react-dom": "latest",
+    "tailwind-merge": "latest",
+    "twilio": "^5.10.5",
+    "ws": "^8.18.3"
+  },
+  "devDependencies": {
+    "eslint": "latest",
+    "eslint-config-next": "latest"
+  }
+}

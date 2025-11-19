@@ -1,0 +1,104 @@
+{
+  "version": 3,
+  "pages404": true,
+  "caseSensitive": false,
+  "basePath": "",
+  "redirects": [
+    {
+      "source": "/:path+/",
+      "destination": "/:path+",
+      "internal": true,
+      "priority": true,
+      "statusCode": 308,
+      "regex": "^(?:/((?:[^/]+?)(?:/(?:[^/]+?))*))/$"
+    }
+  ],
+  "headers": [],
+  "rewrites": {
+    "beforeFiles": [],
+    "afterFiles": [],
+    "fallback": []
+  },
+  "dynamicRoutes": [],
+  "staticRoutes": [
+    {
+      "page": "/",
+      "regex": "^/(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/(?:/)?$"
+    },
+    {
+      "page": "/api/dashboard/stats",
+      "regex": "^/api/dashboard/stats(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/dashboard/stats(?:/)?$"
+    },
+    {
+      "page": "/api/sms/incoming",
+      "regex": "^/api/sms/incoming(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/sms/incoming(?:/)?$"
+    },
+    {
+      "page": "/api/sms/webhook",
+      "regex": "^/api/sms/webhook(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/sms/webhook(?:/)?$"
+    },
+    {
+      "page": "/api/voice/incoming",
+      "regex": "^/api/voice/incoming(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/voice/incoming(?:/)?$"
+    },
+    {
+      "page": "/api/voice/recording",
+      "regex": "^/api/voice/recording(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/voice/recording(?:/)?$"
+    },
+    {
+      "page": "/api/voice/screen",
+      "regex": "^/api/voice/screen(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/voice/screen(?:/)?$"
+    },
+    {
+      "page": "/api/voice/webhook",
+      "regex": "^/api/voice/webhook(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/voice/webhook(?:/)?$"
+    },
+    {
+      "page": "/calls",
+      "regex": "^/calls(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/calls(?:/)?$"
+    },
+    {
+      "page": "/messages",
+      "regex": "^/messages(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/messages(?:/)?$"
+    }
+  ],
+  "dataRoutes": [],
+  "rsc": {
+    "header": "rsc",
+    "varyHeader": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+    "prefetchHeader": "next-router-prefetch",
+    "didPostponeHeader": "x-nextjs-postponed",
+    "contentTypeHeader": "text/x-component",
+    "suffix": ".rsc",
+    "prefetchSuffix": ".prefetch.rsc",
+    "prefetchSegmentHeader": "next-router-segment-prefetch",
+    "prefetchSegmentSuffix": ".segment.rsc",
+    "prefetchSegmentDirSuffix": ".segments",
+    "clientParamParsing": false,
+    "dynamicRSCPrerender": false
+  },
+  "rewriteHeaders": {
+    "pathHeader": "x-nextjs-rewritten-path",
+    "queryHeader": "x-nextjs-rewritten-query"
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "/": "pages/index.html",
+  "/_app": "pages/_app.js",
+  "/_document": "pages/_document.js",
+  "/_error": "pages/_error.js",
+  "/api/dashboard/stats": "pages/api/dashboard/stats.js",
+  "/api/sms/incoming": "pages/api/sms/incoming.js",
+  "/api/sms/webhook": "pages/api/sms/webhook.js",
+  "/api/voice/incoming": "pages/api/voice/incoming.js",
+  "/api/voice/recording": "pages/api/voice/recording.js",
+  "/api/voice/screen": "pages/api/voice/screen.js",
+  "/api/voice/webhook": "pages/api/voice/webhook.js",
+  "/calls": "pages/calls.html",
+  "/messages": "pages/messages.html",
+  "/404": "pages/404.html"
+}
