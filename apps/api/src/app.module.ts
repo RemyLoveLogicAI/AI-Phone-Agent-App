@@ -4,6 +4,7 @@ import { configSchema } from './config/config.schema';
 import { PrismaModule } from './prisma/prisma.module';
 import { TwilioModule } from './twilio/twilio.module';
 import { CallsModule } from './calls/calls.module';
+import { VoiceModule } from './voice/voice.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { CallsModule } from './calls/calls.module';
     PrismaModule,
     TwilioModule,
     CallsModule,
+    VoiceModule,
   ],
   controllers: [],
   providers: [],

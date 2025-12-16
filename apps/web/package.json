@@ -17,6 +17,7 @@
     "openai": "^6.9.1",
     "react": "latest",
     "react-dom": "latest",
+    "socket.io-client": "^4.8.1",
     "tailwind-merge": "latest",
     "twilio": "^5.10.5",
     "ws": "^8.18.3"

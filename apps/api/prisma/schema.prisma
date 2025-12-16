@@ -1,6 +1,5 @@
 generator client {
-  provider = "prisma-client-js"
-}
+  provider = "prisma-client-js"}
 
 datasource db {
   provider = "sqlite"
@@ -16,31 +15,34 @@ model User {
 }
 
 model Contact {
-  id          String   @id @default(uuid())
-  phoneNumber String   @unique
-  name        String?
-  email       String?
-  tags        String?  // JSON array
-  notes       String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  calls       Call[]
-  messages    Message[]
-  voicemails  Voicemail[]
+  id              String            @id @default(uuid())
+  phoneNumber     String            @unique
+  name            String?
+  email           String?
+  tags            String?  // JSON array
+  notes           String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  calls           Call[]
+  messages        Message[]
+  voicemails      Voicemail[]
+  campaignContacts CampaignContact[]
 }
 
 model Call {
-  id          String   @id @default(uuid())
-  sid         String   @unique // Twilio CallSid
-  direction   String   // INBOUND, OUTBOUND
-  status      String
-  duration    Int?
-  recordingUrl String?
-  transcript  String?
-  summary     String?
-  contactId   String?
-  contact     Contact? @relation(fields: [contactId], references: [id])
-  createdAt   DateTime @default(now())
+  id            String         @id @default(uuid())
+  sid           String         @unique // Twilio CallSid
+  direction     String         // INBOUND, OUTBOUND
+  status        String
+  duration      Int?
+  recordingUrl  String?
+  transcript    String?
+  summary       String?
+  contactId     String?
+  contact       Contact?       @relation(fields: [contactId], references: [id])
+  createdAt     DateTime       @default(now())
+  ledgerEvents  LedgerEvent[]
+  campaignCall  CampaignCall?
 }
 
 model Message {
@@ -65,4 +67,148 @@ model Voicemail {
   contactId   String?
   contact     Contact? @relation(fields: [contactId], references: [id])
   createdAt   DateTime @default(now())
+}
+
+// Phase 1: Event Logging
+model LedgerEvent {
+  id        String   @id @default(uuid())
+  callId    String
+  call      Call     @relation(fields: [callId], references: [id])
+  eventType String   // 'audio_received', 'transcript', 'ai_response', 'tts_start', 'tts_complete', etc.
+  payload   String   // JSON blob with event-specific data
+  timestamp DateTime @default(now())
+
+  @@index([callId, timestamp])
+}
+
+// Phase 3: Database-backed tools
+model Booking {
+  id          String   @id @default(uuid())
+  callId      String?
+  contactId   String?
+  serviceType String
+  scheduledAt DateTime
+  duration    Int      // minutes
+  status      String   @default("pending") // pending, confirmed, cancelled, completed
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([scheduledAt])
+  @@index([status])
+}
+
+model Availability {
+  id          String   @id @default(uuid())
+  dayOfWeek   Int      // 0-6 (Sunday-Saturday)
+  startTime   String   // HH:MM format
+  endTime     String   // HH:MM format
+  isAvailable Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([dayOfWeek, isAvailable])
+}
+
+// Phase 6: RAG Knowledge Base
+model KnowledgeChunk {
+  id          String   @id @default(uuid())
+  content     String   // The actual text content
+  embedding   String   // JSON array of vector embedding (1536 dimensions for OpenAI)
+  metadata    String?  // JSON blob for title, source, tags, etc.
+  source      String?  // Source document/URL
+  chunkIndex  Int?     // Position in original document
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([source])
+}
+
+// Phase 6: Outbound Campaigns
+model Campaign {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  status      String   @default("draft") // draft, active, paused, completed
+  script      String?  // AI system prompt for this campaign
+  startTime   DateTime?
+  endTime     DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  contacts    CampaignContact[]
+  calls       CampaignCall[]
+}
+
+model CampaignContact {
+  id          String   @id @default(uuid())
+  campaignId  String
+  campaign    Campaign @relation(fields: [campaignId], references: [id])
+  contactId   String?
+  contact     Contact? @relation(fields: [contactId], references: [id])
+  phoneNumber String
+  name        String?
+  status      String   @default("queued") // queued, calling, completed, failed, no-answer
+  priority    Int      @default(0)
+  scheduledAt DateTime?
+  attempts    Int      @default(0)
+  maxAttempts Int      @default(3)
+  metadata    String?  // JSON blob for custom data
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  calls       CampaignCall[]
+
+  @@index([campaignId, status])
+  @@index([status, scheduledAt])
+}
+
+model CampaignCall {
+  id                String          @id @default(uuid())
+  campaignId        String
+  campaign          Campaign        @relation(fields: [campaignId], references: [id])
+  campaignContactId String
+  campaignContact   CampaignContact @relation(fields: [campaignContactId], references: [id])
+  callId            String?         @unique
+  call              Call?           @relation(fields: [callId], references: [id])
+  status            String          // initiated, ringing, in-progress, completed, failed, no-answer, busy
+  duration          Int?
+  outcome           String?         // JSON blob for call results
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  @@index([campaignId, status])
+  @@index([campaignContactId])
+}
+
+// Phase 7: QA Scoring (Future)
+model CallAnalysis {
+  id             String   @id @default(uuid())
+  callId         String   @unique
+  overallScore   Float?   // 0-100
+  sentiment      String?  // positive, neutral, negative
+  rubricScores   String?  // JSON object with individual scores
+  violations     String?  // JSON array of policy violations
+  suggestions    String?  // JSON array of improvement suggestions
+  analyzedAt     DateTime @default(now())
+
+  @@index([overallScore])
+  @@index([sentiment])
+}
+
+// Phase 8: Long-term Memory (Future)
+model MemoryFact {
+  id          String   @id @default(uuid())
+  subject     String   // person, company, topic
+  predicate   String   // relationship type
+  object      String   // the fact itself
+  confidence  Float    @default(1.0)
+  source      String?  // which call/interaction this came from
+  validFrom   DateTime @default(now())
+  validUntil  DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([subject])
+  @@index([predicate])
 }
