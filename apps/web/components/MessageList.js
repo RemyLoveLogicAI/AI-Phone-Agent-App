@@ -9,6 +9,12 @@ const buildConversations = (messages) => messages.reduce((acc, msg) => {
 
 const formatTime = (date) => new Date(date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
+/**
+ * Renders an interactive message list UI with conversations, chat view, and quick replies.
+ * @param {Object} props
+ * @param {Array<Object>} props.messages - Array of message objects; each should include at minimum `id`, `direction`, `body`, and `dateSent` (ISO string). Inbound messages may include `from` and outbound messages may include `to`.
+ * @returns {JSX.Element} The message list and chat interface for viewing and replying to conversations.
+ */
 export default function MessageList({ messages }) {
   const [conversations, setConversations] = useState(() => buildConversations(messages));
   const [selectedContact, setSelectedContact] = useState(() => Object.keys(conversations)[0]);

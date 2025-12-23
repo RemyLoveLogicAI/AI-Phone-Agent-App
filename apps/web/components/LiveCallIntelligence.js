@@ -1,5 +1,13 @@
 import { useState, useEffect, useMemo } from 'react';
 
+/**
+ * Render a live call intelligence panel that displays real-time transcription, AI suggestions, derived insights, and call stats.
+ *
+ * When active, the component updates transcription, suggestions, insights, and stats from incoming speech; when not active, it resets transient state.
+ * @param {Object} props
+ * @param {boolean} props.isActive - Controls whether the panel is actively listening and updating; when false the component clears transient data and stops updates.
+ * @returns {JSX.Element} The Live Call Intelligence UI panel.
+ */
 export default function LiveCallIntelligence({ isActive }) {
   const [transcription, setTranscription] = useState([]);
   const [aiSuggestion, setAiSuggestion] = useState(null);

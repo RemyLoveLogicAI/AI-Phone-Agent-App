@@ -1,5 +1,16 @@
 import { useState } from 'react';
 
+/**
+ * Interactive numeric dialer UI with display, helper text, keypad, and a call action.
+ *
+ * The component limits input to 15 characters, updates contextual helper text as digits are
+ * entered or removed, and disables input actions when there is no number. When the user
+ * initiates a call, the provided `onCallStart` callback is invoked with the current dialed number.
+ *
+ * @param {Object} props
+ * @param {(phoneNumber: string) => void} props.onCallStart - Called with the current dialed number when the Call button is pressed.
+ * @returns {JSX.Element} The rendered Dialer component.
+ */
 export default function Dialer({ onCallStart }) {
   const MAX_LENGTH = 15;
   const [number, setNumber] = useState('');
