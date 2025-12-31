@@ -14,7 +14,7 @@ process.env.MY_REAL_PHONE_NUMBER = '+15550000000';
 // OR, simpler: create a mock request/response object and call the handler function directly.
 // This avoids starting the full Next.js server.
 
-const handler = require('./pages/api/voice/webhook').default;
+const handler = require('./apps/web/pages/api/voice/webhook').default;
 
 // Mock Request and Response
 class MockResponse {
