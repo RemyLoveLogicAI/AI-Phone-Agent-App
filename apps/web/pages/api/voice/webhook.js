@@ -1,4 +1,6 @@
 import twilio from 'twilio';
+import OpenAI from 'openai';
+
 const VoiceResponse = twilio.twiml.VoiceResponse;
 
 export default async function handler(req, res) {
@@ -35,7 +37,6 @@ export default async function handler(req, res) {
       // 2. Analyze the speech result
       if (SpeechResult) {
         try {
-          const OpenAI = require('openai');
           const openai = new OpenAI({
             apiKey: process.env.OPENAI_API_KEY,
           });
