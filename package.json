@@ -16,5 +16,8 @@
   },
   "dependencies": {
     "@prisma/client": "^6.19.0"
+  },
+  "overrides": {
+    "axios": "1.15.0"
   }
 }
