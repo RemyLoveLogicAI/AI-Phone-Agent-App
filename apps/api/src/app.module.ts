@@ -15,7 +15,7 @@ import { VoiceModule } from './voice/voice.module';
     PrismaModule,
     TwilioModule,
     CallsModule,
-    VoiceModule,
+    VoiceModule, // CallOS Voice System
   ],
   controllers: [],
   providers: [],

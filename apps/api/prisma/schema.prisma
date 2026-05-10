@@ -12,37 +12,65 @@ model User {
   name      String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  // CallOS relationships
+  policies  Policy[]
+  playbooks Playbook[]
+  memories  Memory[]
 }
 
 model Contact {
-  id              String            @id @default(uuid())
-  phoneNumber     String            @unique
-  name            String?
-  email           String?
-  tags            String?  // JSON array
-  notes           String?
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
-  calls           Call[]
-  messages        Message[]
-  voicemails      Voicemail[]
-  campaignContacts CampaignContact[]
+  id          String   @id @default(uuid())
+  phoneNumber String   @unique
+  name        String?
+  email       String?
+  tags        String?  // JSON array
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // CallOS fields
+  trustTier   Int      @default(0) // 0-4 trust tier
+  trustScore  Float    @default(0.0) // Computed trust score
+  isVIP       Boolean  @default(false)
+  isBlocked   Boolean  @default(false)
+  preferences String?  // JSON - caller preferences
+
+  calls       Call[]
+  messages    Message[]
+  voicemails  Voicemail[]
+  trustScores TrustScore[]
+  memories    Memory[]
 }
 
 model Call {
-  id            String         @id @default(uuid())
-  sid           String         @unique // Twilio CallSid
-  direction     String         // INBOUND, OUTBOUND
-  status        String
-  duration      Int?
-  recordingUrl  String?
-  transcript    String?
-  summary       String?
-  contactId     String?
-  contact       Contact?       @relation(fields: [contactId], references: [id])
-  createdAt     DateTime       @default(now())
-  ledgerEvents  LedgerEvent[]
-  campaignCall  CampaignCall?
+  id          String   @id @default(uuid())
+  sid         String   @unique // Twilio CallSid
+  direction   String   // INBOUND, OUTBOUND
+  status      String
+  duration    Int?
+  recordingUrl String?
+  transcript  String?
+  summary     String?
+  contactId   String?
+  contact     Contact? @relation(fields: [contactId], references: [id])
+  createdAt   DateTime @default(now())
+
+  // CallOS fields
+  playbookId  String?
+  playbook    Playbook? @relation(fields: [playbookId], references: [id])
+  intentDistribution String? // JSON - intent probabilities
+  emotionalState String? // JSON - emotion signals
+  trustScoreAtStart Float @default(0.0)
+  trustScoreAtEnd Float @default(0.0)
+  scamConfidence Float @default(0.0)
+  wasEscalated Boolean @default(false)
+  escalationReason String?
+  actionsTaken String? // JSON array of actions
+
+  // Relations
+  events      CallEvent[]
+  intelligencePack IntelligencePack?
 }
 
 model Message {
@@ -69,146 +97,145 @@ model Voicemail {
   createdAt   DateTime @default(now())
 }
 
-// Phase 1: Event Logging
-model LedgerEvent {
-  id        String   @id @default(uuid())
-  callId    String
-  call      Call     @relation(fields: [callId], references: [id])
-  eventType String   // 'audio_received', 'transcript', 'ai_response', 'tts_start', 'tts_complete', etc.
-  payload   String   // JSON blob with event-specific data
-  timestamp DateTime @default(now())
+// ============================================================================
+// CallOS Models - Phase A (MVP)
+// ============================================================================
+
+// Call Ledger - Append-only event store for audit trail
+model CallEvent {
+  id          String   @id @default(uuid())
+  callId      String
+  call        Call     @relation(fields: [callId], references: [id], onDelete: Cascade)
+  eventType   String   // transcript_delta, intent_update, tool_intent, policy_decision, tool_result, escalation, takeover, call_end
+  timestamp   DateTime @default(now())
+  payload     String   // JSON - event-specific data
+  modelVersion String?  // Which model produced this event
+  latencyMs   Int?     // Processing time in milliseconds
 
   @@index([callId, timestamp])
 }
 
-// Phase 3: Database-backed tools
-model Booking {
+// Policy Engine - Tool permissions and guardrails
+model Policy {
   id          String   @id @default(uuid())
-  callId      String?
-  contactId   String?
-  serviceType String
-  scheduledAt DateTime
-  duration    Int      // minutes
-  status      String   @default("pending") // pending, confirmed, cancelled, completed
-  notes       String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@index([scheduledAt])
-  @@index([status])
-}
-
-model Availability {
-  id          String   @id @default(uuid())
-  dayOfWeek   Int      // 0-6 (Sunday-Saturday)
-  startTime   String   // HH:MM format
-  endTime     String   // HH:MM format
-  isAvailable Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@index([dayOfWeek, isAvailable])
-}
-
-// Phase 6: RAG Knowledge Base
-model KnowledgeChunk {
-  id          String   @id @default(uuid())
-  content     String   // The actual text content
-  embedding   String   // JSON array of vector embedding (1536 dimensions for OpenAI)
-  metadata    String?  // JSON blob for title, source, tags, etc.
-  source      String?  // Source document/URL
-  chunkIndex  Int?     // Position in original document
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@index([source])
-}
-
-// Phase 6: Outbound Campaigns
-model Campaign {
-  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   name        String
   description String?
-  status      String   @default("draft") // draft, active, paused, completed
-  script      String?  // AI system prompt for this campaign
-  startTime   DateTime?
-  endTime     DateTime?
+  isActive    Boolean  @default(true)
+  toolPermissions String // JSON - tool permission configuration
+  escalationTriggers String? // JSON array
+  disclosureRules String? // JSON - what to share at each trust tier
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  contacts    CampaignContact[]
-  calls       CampaignCall[]
+  @@index([userId])
 }
 
-model CampaignContact {
+// Playbook - Conversation flow configuration
+model Playbook {
   id          String   @id @default(uuid())
-  campaignId  String
-  campaign    Campaign @relation(fields: [campaignId], references: [id])
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  version     String   @default("1.0.0")
+  author      String   @default("LoveLogicAI")
+  isActive    Boolean  @default(true)
+
+  // Persona configuration
+  voiceId     String   @default("professional-female-us")
+  speakingRate Float   @default(1.0)
+  warmth      Float    @default(0.8)
+
+  // Flow configuration
+  openingVariants String // JSON array of opening lines
+  qualificationFlow String? // JSON array of questions
+  toolPermissions String? // JSON - playbook-specific tool permissions
+  escalationTriggers String? // JSON array
+  compliance  String? // JSON - disclosure and consent requirements
+  retention   String? // JSON - data retention policies
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  calls       Call[]
+
+  @@index([userId])
+}
+
+// Memory - Multi-layer memory system
+model Memory {
+  id          String   @id @default(uuid())
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
   contactId   String?
-  contact     Contact? @relation(fields: [contactId], references: [id])
-  phoneNumber String
-  name        String?
-  status      String   @default("queued") // queued, calling, completed, failed, no-answer
-  priority    Int      @default(0)
-  scheduledAt DateTime?
-  attempts    Int      @default(0)
-  maxAttempts Int      @default(3)
-  metadata    String?  // JSON blob for custom data
+  contact     Contact? @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  layer       String   // ephemeral, session, contact, org, outcome
+  key         String   // Memory key/identifier
+  value       String   // JSON - memory content
+
+  isPinned    Boolean  @default(false) // Permanent preference
+  isRedacted  Boolean  @default(false) // Has been redacted
+
+  expiresAt   DateTime? // TTL for ephemeral/session
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  calls       CampaignCall[]
-
-  @@index([campaignId, status])
-  @@index([status, scheduledAt])
+  @@index([userId, layer])
+  @@index([contactId, layer])
 }
 
-model CampaignCall {
-  id                String          @id @default(uuid())
-  campaignId        String
-  campaign          Campaign        @relation(fields: [campaignId], references: [id])
-  campaignContactId String
-  campaignContact   CampaignContact @relation(fields: [campaignContactId], references: [id])
-  callId            String?         @unique
-  call              Call?           @relation(fields: [callId], references: [id])
-  status            String          // initiated, ringing, in-progress, completed, failed, no-answer, busy
-  duration          Int?
-  outcome           String?         // JSON blob for call results
-  createdAt         DateTime        @default(now())
-  updatedAt         DateTime        @updatedAt
-
-  @@index([campaignId, status])
-  @@index([campaignContactId])
-}
-
-// Phase 7: QA Scoring (Future)
-model CallAnalysis {
-  id             String   @id @default(uuid())
-  callId         String   @unique
-  overallScore   Float?   // 0-100
-  sentiment      String?  // positive, neutral, negative
-  rubricScores   String?  // JSON object with individual scores
-  violations     String?  // JSON array of policy violations
-  suggestions    String?  // JSON array of improvement suggestions
-  analyzedAt     DateTime @default(now())
-
-  @@index([overallScore])
-  @@index([sentiment])
-}
-
-// Phase 8: Long-term Memory (Future)
-model MemoryFact {
+// Trust Score - Track caller trust evolution
+model TrustScore {
   id          String   @id @default(uuid())
-  subject     String   // person, company, topic
-  predicate   String   // relationship type
-  object      String   // the fact itself
-  confidence  Float    @default(1.0)
-  source      String?  // which call/interaction this came from
-  validFrom   DateTime @default(now())
-  validUntil  DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  contactId   String
+  contact     Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
 
-  @@index([subject])
-  @@index([predicate])
+  score       Float    // Computed trust score
+  tier        Int      // 0-4 trust tier
+
+  // Feature contributions
+  stirShakenAttestation String? // A, B, C
+  historicalCallCount Int @default(0)
+  scamPatternScore Float @default(0.0)
+  verificationMethod String? // otp, callback, voiceprint, known_details
+  timeOfDayAnomaly Float @default(0.0)
+  geographicConsistency Float @default(0.0)
+
+  reason      String?  // Human-readable explanation
+  createdAt   DateTime @default(now())
+
+  @@index([contactId])
+}
+
+// Intelligence Pack - Post-call summary and insights
+model IntelligencePack {
+  id          String   @id @default(uuid())
+  callId      String   @unique
+  call        Call     @relation(fields: [callId], references: [id], onDelete: Cascade)
+
+  // Summary fields (JSON for structured data)
+  whatHappened String   // Summary of call
+  whatTheyWant String   // Caller intent
+  whatWeDid    String   // Actions taken
+  whatYouShouldDo String // Recommended next steps
+  riskFlags    String   // JSON array
+
+  // Extracted entities
+  entities     String   // JSON - caller_name, company, budget, etc.
+
+  // Analysis
+  intentDistribution String // JSON - intent probabilities
+  actionsTaken String? // JSON array of actions
+  suggestedFollowups String? // JSON array of suggested actions
+
+  // Audit
+  auditSummary String   // JSON - decisions, policy_checks, tools_invoked counts
+
+  generatedAt DateTime @default(now())
+  processingTimeMs Int? // How long it took to generate
+
+  @@index([callId])
 }

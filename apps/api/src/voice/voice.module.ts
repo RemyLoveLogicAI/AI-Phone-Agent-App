@@ -1,56 +1,42 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { VoiceStreamGateway } from './voice-stream.gateway';
+import { VoiceController } from './voice.controller';
+import { CallLedgerService } from './services/call-ledger.service';
+import { ShadowBrainService } from './services/shadow-brain.service';
+import { PolicyEngineService } from './services/policy-engine.service';
+import { TrustScoringService } from './services/trust-scoring.service';
+import { IntelligencePackService } from './services/intelligence-pack.service';
 import { PrismaModule } from '../prisma/prisma.module';
 
-// Phase 1-2 Services
-import { DeepgramService } from './services/deepgram.service';
-import { CartesiaService } from './services/cartesia.service';
-import { DialogueService } from './services/dialogue.service';
-import { LedgerService } from './services/ledger.service';
-
-// Phase 3-6 Services
-import { BookingService } from './services/booking.service';
-import { RagService } from './services/rag.service';
-import { CampaignService } from './services/campaign.service';
-
-// Gateways
-import { VoiceGateway } from './voice.gateway';
-import { TwilioMediaGateway } from './twilio-media.gateway';
-
-// Controllers
-import { VoiceController } from './voice.controller';
-import { CampaignController } from './campaign.controller';
-
 /**
- * Voice Module - PHASES 1-6 COMPLETE 🚀
+ * CallOS Voice Module
  *
- * Phase 1-2: Core Voice Loop + Telephony ✅
- * Phase 3: Database-Backed Tools ✅
- * Phase 6: RAG + Outbound Campaigns ✅
- * Phase 7-8: Schema Scaffolded (Future)
+ * Implements the Realtime Interaction Plane with:
+ * - WebSocket gateway for Twilio Media Streams
+ * - Call Ledger (append-only event store)
+ * - Shadow Brain (parallel analysis)
+ * - Policy Engine (tool gating)
+ * - Trust Scoring (caller verification)
+ * - Intelligence Pack generation (<30s post-call)
  */
 @Module({
-  imports: [ConfigModule, PrismaModule],
+  imports: [PrismaModule],
+  controllers: [VoiceController],
   providers: [
-    DeepgramService,
-    CartesiaService,
-    DialogueService,
-    LedgerService,
-    BookingService,
-    RagService,
-    CampaignService,
-    VoiceGateway,
-    TwilioMediaGateway,
+    VoiceStreamGateway,
+    CallLedgerService,
+    ShadowBrainService,
+    PolicyEngineService,
+    TrustScoringService,
+    IntelligencePackService,
   ],
-  controllers: [VoiceController, CampaignController],
   exports: [
-    DeepgramService,
-    CartesiaService,
-    DialogueService,
-    LedgerService,
-    BookingService,
-    RagService,
-    CampaignService,
+    VoiceStreamGateway,
+    CallLedgerService,
+    ShadowBrainService,
+    PolicyEngineService,
+    TrustScoringService,
+    IntelligencePackService,
   ],
 })
 export class VoiceModule {}

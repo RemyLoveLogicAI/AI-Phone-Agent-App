@@ -1,197 +1,298 @@
-import { Controller, Get, Post, Body, Param, Logger } from '@nestjs/common';
-import { DeepgramService } from './services/deepgram.service';
-import { CartesiaService } from './services/cartesia.service';
-import { DialogueService } from './services/dialogue.service';
-import { LedgerService } from './services/ledger.service';
-import * as Twilio from 'twilio';
-import { ConfigService } from '@nestjs/config';
-import { Config } from '../config/config.schema';
+import { Controller, Post, Get, Body, Param, Query, Logger } from '@nestjs/common';
+import { VoiceStreamGateway } from './voice-stream.gateway';
+import { CallLedgerService } from './services/call-ledger.service';
+import { TrustScoringService } from './services/trust-scoring.service';
+import { IntelligencePackService } from './services/intelligence-pack.service';
+import { PolicyEngineService } from './services/policy-engine.service';
 
 /**
- * Voice Controller
- * REST endpoints for voice AI functionality
+ * CallOS Voice Controller
+ *
+ * HTTP endpoints for voice system management and monitoring
  */
 @Controller('voice')
 export class VoiceController {
   private readonly logger = new Logger(VoiceController.name);
-  private readonly twilioPhoneNumber: string;
 
   constructor(
-    private readonly deepgramService: DeepgramService,
-    private readonly cartesiaService: CartesiaService,
-    private readonly dialogueService: DialogueService,
-    private readonly ledgerService: LedgerService,
-    private readonly configService: ConfigService<Config>,
-  ) {
-    this.twilioPhoneNumber = this.configService.get('TWILIO_PHONE_NUMBER', {
-      infer: true,
-    });
-  }
+    private voiceGateway: VoiceStreamGateway,
+    private callLedger: CallLedgerService,
+    private trustScoring: TrustScoringService,
+    private intelligencePack: IntelligencePackService,
+    private policyEngine: PolicyEngineService,
+  ) {}
 
   /**
    * Health check endpoint
    */
   @Get('health')
   async healthCheck() {
-    const deepgramHealth = await this.deepgramService.healthCheck();
-    const cartesiaHealth = await this.cartesiaService.healthCheck();
-    const dialogueHealth = await this.dialogueService.healthCheck();
-
     return {
-      status: deepgramHealth && cartesiaHealth && dialogueHealth ? 'healthy' : 'unhealthy',
-      services: {
-        deepgram: deepgramHealth ? 'up' : 'down',
-        cartesia: cartesiaHealth ? 'up' : 'down',
-        dialogue: dialogueHealth ? 'up' : 'down',
-      },
+      status: 'ok',
+      activeSessions: this.voiceGateway.getActiveSessionsCount(),
       timestamp: new Date().toISOString(),
     };
   }
 
   /**
-   * Twilio webhook for incoming calls
-   * Returns TwiML to establish Media Stream
+   * Get active voice sessions
    */
-  @Post('twilio/incoming')
-  handleIncomingCall(@Body() body: any) {
-    const { CallSid, From, To } = body;
-    this.logger.log(`Incoming call: ${CallSid} from ${From}`);
-
-    const response = new Twilio.twiml.VoiceResponse();
-
-    // Start media stream
-    const connect = response.connect();
-    const stream = connect.stream({
-      url: `wss://${this.configService.get('NODE_ENV') === 'production'
-        ? 'YOUR_DOMAIN'
-        : 'localhost:' + this.configService.get('PORT')}/twilio-media`,
-    });
-
-    stream.parameter({
-      name: 'callSid',
-      value: CallSid,
-    });
-
-    stream.parameter({
-      name: 'direction',
-      value: 'inbound',
-    });
-
-    this.logger.log(`TwiML generated for call: ${CallSid}`);
-    return response.toString();
+  @Get('sessions')
+  async getActiveSessions() {
+    return {
+      count: this.voiceGateway.getActiveSessionsCount(),
+      timestamp: new Date().toISOString(),
+    };
   }
 
   /**
-   * Twilio status callback
+   * Get call events (audit trail)
    */
-  @Post('twilio/status')
-  handleStatusCallback(@Body() body: any) {
-    const { CallSid, CallStatus, CallDuration } = body;
-    this.logger.log(`Call status: ${CallSid} - ${CallStatus} (${CallDuration}s)`);
-
-    return { received: true };
+  @Get('calls/:callId/events')
+  async getCallEvents(@Param('callId') callId: string) {
+    const events = await this.callLedger.getCallEvents(callId);
+    return {
+      callId,
+      events,
+      count: events.length,
+    };
   }
 
   /**
-   * Get call transcript
+   * Get call event timeline (for audit explorer)
    */
-  @Get('transcript/:callId')
-  async getTranscript(@Param('callId') callId: string) {
-    try {
-      const transcript = await this.ledgerService.getConversationTranscript(callId);
-      return {
-        callId,
-        transcript,
-        count: transcript.length,
-      };
-    } catch (error) {
-      this.logger.error(`Error getting transcript: ${error.message}`);
-      return {
-        error: 'Failed to retrieve transcript',
-        message: error.message,
-      };
-    }
+  @Get('calls/:callId/timeline')
+  async getCallTimeline(@Param('callId') callId: string) {
+    const timeline = await this.callLedger.getEventTimeline(callId);
+    return {
+      callId,
+      timeline,
+    };
   }
 
   /**
    * Get call statistics
    */
-  @Get('stats/:callId')
+  @Get('calls/:callId/stats')
   async getCallStats(@Param('callId') callId: string) {
-    try {
-      const stats = await this.ledgerService.getCallStatistics(callId);
-      return {
-        callId,
-        ...stats,
-      };
-    } catch (error) {
-      this.logger.error(`Error getting stats: ${error.message}`);
-      return {
-        error: 'Failed to retrieve statistics',
-        message: error.message,
-      };
-    }
-  }
-
-  /**
-   * Get call events
-   */
-  @Get('events/:callId')
-  async getCallEvents(@Param('callId') callId: string) {
-    try {
-      const events = await this.ledgerService.getCallEvents(callId);
-      return {
-        callId,
-        events,
-        count: events.length,
-      };
-    } catch (error) {
-      this.logger.error(`Error getting events: ${error.message}`);
-      return {
-        error: 'Failed to retrieve events',
-        message: error.message,
-      };
-    }
-  }
-
-  /**
-   * List available TTS voices
-   */
-  @Get('voices')
-  async listVoices() {
-    try {
-      const voices = await this.cartesiaService.listVoices();
-      return voices;
-    } catch (error) {
-      this.logger.error(`Error listing voices: ${error.message}`);
-      return {
-        error: 'Failed to list voices',
-        message: error.message,
-      };
-    }
-  }
-
-  /**
-   * Get service statistics
-   */
-  @Get('service-stats')
-  getServiceStats() {
+    const stats = await this.callLedger.getCallStatistics(callId);
     return {
-      deepgramActiveSessions: this.deepgramService.getActiveSessionCount(),
-      dialogueActiveSessions: this.dialogueService.getActiveSessionCount(),
+      callId,
+      stats,
+    };
+  }
+
+  /**
+   * Get intelligence pack for a call
+   */
+  @Get('calls/:callId/intelligence')
+  async getIntelligencePack(@Param('callId') callId: string) {
+    const pack = await this.intelligencePack.getIntelligencePack(callId);
+
+    if (!pack) {
+      return {
+        error: 'Intelligence pack not found',
+        callId,
+      };
+    }
+
+    return pack;
+  }
+
+  /**
+   * Generate intelligence pack for a call
+   */
+  @Post('calls/:callId/intelligence/generate')
+  async generateIntelligencePack(@Param('callId') callId: string) {
+    try {
+      const pack = await this.intelligencePack.generateIntelligencePack(callId);
+      return {
+        success: true,
+        pack,
+      };
+    } catch (error) {
+      this.logger.error(
+        `Failed to generate intelligence pack: ${error.message}`,
+        error.stack,
+      );
+      return {
+        success: false,
+        error: error.message,
+      };
+    }
+  }
+
+  /**
+   * Compute trust score for a phone number
+   */
+  @Post('trust/score')
+  async computeTrustScore(
+    @Body()
+    body: {
+      phoneNumber: string;
+      features?: any;
+    },
+  ) {
+    const result = await this.trustScoring.computeTrustScore(
+      body.phoneNumber,
+      body.features,
+    );
+
+    return {
+      phoneNumber: body.phoneNumber,
+      ...result,
+    };
+  }
+
+  /**
+   * Mark contact as VIP
+   */
+  @Post('trust/vip')
+  async markAsVIP(@Body() body: { phoneNumber: string }) {
+    await this.trustScoring.markAsVIP(body.phoneNumber);
+
+    return {
+      success: true,
+      phoneNumber: body.phoneNumber,
+      message: 'Contact marked as VIP',
+    };
+  }
+
+  /**
+   * Block contact
+   */
+  @Post('trust/block')
+  async blockContact(@Body() body: { phoneNumber: string }) {
+    await this.trustScoring.blockContact(body.phoneNumber);
+
+    return {
+      success: true,
+      phoneNumber: body.phoneNumber,
+      message: 'Contact blocked',
+    };
+  }
+
+  /**
+   * Check policy for a tool invocation
+   */
+  @Post('policy/check')
+  async checkPolicy(
+    @Body()
+    body: {
+      toolName: string;
+      parameters: Record<string, any>;
+      callId: string;
+      trustTier: number;
+      userId?: string;
+    },
+  ) {
+    const decision = await this.policyEngine.checkPolicy(
+      body.toolName,
+      body.parameters,
+      body.callId,
+      body.trustTier,
+      body.userId,
+    );
+
+    return {
+      ...decision,
       timestamp: new Date().toISOString(),
     };
   }
 
   /**
-   * Cleanup stale sessions
+                                                                                                                                                                  `   * Create or update policy
    */
-  @Post('cleanup')
-  cleanupStaleSessions() {
-    const cleaned = this.dialogueService.cleanupStaleSessions();
+  @Post('policy')
+  async createPolicy(
+    @Body()
+    body: {
+      userId: string;
+      name: string;
+      config: any;
+    },
+  ) {
+    await this.policyEngine.createPolicy(body.userId, body.name, body.config);
+
     return {
-      cleaned,
-      message: `Cleaned up ${cleaned} stale sessions`,
+      success: true,
+      message: `Policy '${body.name}' created for user ${body.userId}`,
+    };
+  }
+
+  /**
+   * Check if should escalate
+   */
+  @Post('policy/escalate')
+  async checkEscalation(
+    @Body()
+    body: {
+      trigger: string;
+      context: Record<string, any>;
+      userId?: string;
+    },
+  ) {
+    const shouldEscalate = this.policyEngine.shouldEscalate(
+      body.trigger,
+      body.context,
+      body.userId,
+    );
+
+    return {
+      shouldEscalate,
+      trigger: body.trigger,
+    };
+  }
+
+  /**
+   * Test endpoint for generating sample intelligence pack
+   */
+  @Get('test/intelligence-pack')
+  async testIntelligencePack() {
+    return {
+      message: 'Sample Intelligence Pack',
+      pack: {
+        callId: 'test_call_123',
+        durationSeconds: 187,
+        summary: {
+          whatHappened: 'Caller inquired about service pricing and availability.',
+          whatTheyWant: 'Schedule consultation for next week.',
+          whatWeDid: 'Provided pricing range, offered three time slots.',
+          whatYouShouldDo: 'Confirm Tuesday 2pm if calendar allows.',
+          riskFlags: ['none'],
+        },
+        entities: {
+          callerName: 'Sarah Chen',
+          company: 'TechFlow Inc',
+          budgetRange: '$5k-$10k',
+          timeline: 'Q1 2025',
+        },
+        trustScore: 0.82,
+        intentDistribution: {
+          sales_inquiry: 0.91,
+          support: 0.05,
+          spam: 0.04,
+        },
+        actionsTaken: [
+          {
+            type: 'sms_sent',
+            content: 'Pricing overview',
+            timestamp: new Date().toISOString(),
+          },
+        ],
+        suggestedFollowups: [
+          {
+            type: 'calendar_hold',
+            params: { date: '2024-12-17', time: '14:00' },
+          },
+          { type: 'email_draft', priority: 2 },
+        ],
+        auditTrail: {
+          decisions: 12,
+          policyChecks: 8,
+          toolsInvoked: 3,
+        },
+      },
     };
   }
 }
