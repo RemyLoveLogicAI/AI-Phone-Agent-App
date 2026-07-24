@@ -1,56 +1,111 @@
-[Documentation Home](README.md)
+# 📚 AI-Phone-Agent-App Documentation
+
+Welcome to the complete documentation for this repository. This documentation is automatically generated and maintained by Woden Docbot.
+
+![Health: Healthy](https://img.shields.io/badge/Health-Healthy-green) ![Files Documented: 8](https://img.shields.io/badge/Files_Documented-8-blue) ![Coverage: 100](https://img.shields.io/badge/Coverage-100-green) ![Last Updated: 2026-07-24](https://img.shields.io/badge/Last_Updated-2026--07--24-gray)
+
+## 🔗 Quick Links
+
+[📂 apps](./apps/README.md)
+[📋 Dependencies](./DEPENDENCIES.md)
+
 
 ---
 
-# 📁 _docs
-
-> **Purpose:** Top-level documentation directory that organizes application-focused documentation and related test/configuration artifacts for the project's apps.
-> 
-
-![Organization: Hierarchical](https://img.shields.io/badge/Organization-Hierarchical-blue)
-
-## 📑 Table of Contents
+> Repository-level organization and test/configuration assets for a Next-based web application with React UI components and Jest testing setup.
 
 
-- [Overview](#overview)
-- [Subdirectories](#subdirectories)
-- [Architecture Notes](#architecture-notes)
+
+## 📖 Overview
+
+This repository organizes application-focused documentation, test configuration, and UI component sources for a web application. At the apps level it groups app-specific concerns and currently hosts a web/ subtree containing React UI components, storage-related tests, and a root-level Jest configuration tailored for a Next application.
+
+Developers can find the web app's Jest setup (jest.config.js), grouped React component sources, and testing assets in apps/web. The layout keeps app-specific test setup and UI component code separate from core libraries and higher-level docs, making it easier to discover, build, and test the web application.
+
+
+### 🧩 Key Components
+
+| Component | Purpose | Technologies |
+| --- | --- | --- |
+| **apps** | Top-level grouping that collects application-level documentation, test configuration, and test artifacts. It organizes subdirectories so app-specific build/test/documentation assets are separated from core libraries. | `Jest`, `React`, `Next` |
+| **apps/web** | Houses the web application's Jest test configuration and setup, grouped React UI component sources, and storage-related tests used by the web app. Includes a root-level jest.config.js tailored for a Next application. | `Jest`, `React`, `Next` |
+
+
+
+
+**Component Architecture:**
+
+```mermaid
+graph TD
+    C0[apps]
+    C1[apps/web]
+    C0 --> C1
+```
+
+### 🏗️ Architecture
+
+Repository-level app grouping that separates app-specific test/config and UI component sources from other repo concerns. The web app is structured as a Next-targeted React application with Jest for testing and a dedicated jest.config.js for Next compatibility.
+
+### 💡 Use Cases
+
+- ✦ Discover and modify Jest test configuration for the web application (Next-targeted)
+- ✦ Develop and test React UI components organized under the web app
+- ✦ Maintain and run storage-related tests and grouped testing assets for the web application
+
+
+
+### 🔧 Technologies
+
+
+**Frameworks:** ![React: ](https://img.shields.io/badge/React--blue)
+![Jest: ](https://img.shields.io/badge/Jest--blue) ![Next: ](https://img.shields.io/badge/Next--blue)
 
 ---
 
-## Overview
+## 📑 Documentation Sections
 
-The _docs directory is a documentation container focused on application-level documentation and related test/configuration assets. At the root level there are no files; instead this directory organizes one or more subdirectories that each contain the files and configuration necessary to build, test, and document specific applications. The present repository includes an apps/ subdirectory which is the primary location for app-focused documentation and any app-specific test or configuration artifacts.
+### [apps](./apps/README.md)
+Top-level directory that groups application-focused documentation and test/configuration artifacts for the project's apps, with a focus on the web application.
 
-The apps/ subdirectory collects documentation and test/configuration assets for the project's applications, with a particular emphasis on the web application. Within this directory structure, the role of _docs is to act as the centralized entry point for developers seeking application-level guidance, test configurations, and other artifacts related to shipping and validating apps. Because the root contains no files, navigation begins by exploring the listed subdirectories (for example apps/) where concrete documentation and resources are expected to reside.
 
-
-### File Organization
-
-This directory uses a hierarchical organization: the root _docs directory serves as a container and delegates actual content to subdirectories (currently apps/). There are no root-level files; documentation and artifacts are organized under subdirectories so each app or documentation area can maintain its own files and configuration independently.
-
-## 📂 Subdirectories
-
-This directory contains the following subdirectories:
-
-### [📁 apps/](./apps//README.md)
-
-**Purpose:** Top-level directory that groups application-focused documentation and test/configuration artifacts for the project's apps, with a focus on the web application.
-
-![Files: 0](https://img.shields.io/badge/Files-0-blue)
-
----
-## Architecture Notes
-
-- Documentation is organized hierarchically: the _docs root acts as a container and expects each application to maintain its own documentation and artifacts under subdirectories such as apps/.
+The docs/apps directory serves as the collection point for application-level documentation and related test/configuration assets.
 
 ---
 
-## Navigation
+## 📊 Documentation Statistics
 
-**↑ Parent Directory:** [Go up](../README.md)
-**🔗 Related:** [apps/](./apps//README.md)
+- **Files Documented**: 8
+- **Directories**: 7
+- **Coverage**: 100%
+- **Last Updated**: 2026-07-24
 
 ---
 
-*Generated by Woden Docbot*
+## 🧭 How to Navigate
+
+> ℹ️ **INFO**
+> Each directory has its own README.md with detailed information about that section. Use the breadcrumb navigation at the top of each page to navigate back to parent directories.
+
+### Navigation Features
+
+- **Breadcrumbs** - At the top of each page, showing your current location
+- **Directory READMEs** - Each folder has a comprehensive overview
+- **File Documentation** - Click through to individual file documentation
+- **Search** - Use GitHub's search or your IDE's search functionality
+
+---
+
+## 🤖 About Woden DocBot
+
+This documentation is automatically generated and kept up-to-date by Woden DocBot, an AI-powered documentation assistant. DocBot analyzes code on every pull request and updates documentation to reflect changes.
+
+### Features
+
+- **Automatic Updates** - Documentation updates on every PR
+- **Comprehensive Coverage** - Files, functions, classes, and directories
+- **Smart Navigation** - Breadcrumbs, related files, and parent links
+- **AI-Powered** - Uses Azure GPT models for intelligent documentation generation
+
+---
+
+*Generated by Woden DocBot for AI-Phone-Agent-App*
