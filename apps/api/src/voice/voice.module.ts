@@ -1,12 +1,14 @@
-import { Module } from '@nestjs/common';
-import { VoiceStreamGateway } from './voice-stream.gateway';
-import { VoiceController } from './voice.controller';
-import { CallLedgerService } from './services/call-ledger.service';
-import { ShadowBrainService } from './services/shadow-brain.service';
-import { PolicyEngineService } from './services/policy-engine.service';
-import { TrustScoringService } from './services/trust-scoring.service';
-import { IntelligencePackService } from './services/intelligence-pack.service';
-import { PrismaModule } from '../prisma/prisma.module';
+import { Module } from "@nestjs/common";
+import { VoiceStreamGateway } from "./voice-stream.gateway";
+import { VoiceController } from "./voice.controller";
+import { CallLedgerService } from "./services/call-ledger.service";
+import { ShadowBrainService } from "./services/shadow-brain.service";
+import { PolicyEngineService } from "./services/policy-engine.service";
+import { TrustScoringService } from "./services/trust-scoring.service";
+import { IntelligencePackService } from "./services/intelligence-pack.service";
+import { PrismaModule } from "../prisma/prisma.module";
+import { AdaptiveToolsController } from "./adaptive-tools.controller";
+import { AdaptiveToolRegistryService } from "./services/adaptive-tool-registry.service";
 
 /**
  * CallOS Voice Module
@@ -21,7 +23,7 @@ import { PrismaModule } from '../prisma/prisma.module';
  */
 @Module({
   imports: [PrismaModule],
-  controllers: [VoiceController],
+  controllers: [VoiceController, AdaptiveToolsController],
   providers: [
     VoiceStreamGateway,
     CallLedgerService,
@@ -29,6 +31,7 @@ import { PrismaModule } from '../prisma/prisma.module';
     PolicyEngineService,
     TrustScoringService,
     IntelligencePackService,
+    AdaptiveToolRegistryService,
   ],
   exports: [
     VoiceStreamGateway,
@@ -37,6 +40,7 @@ import { PrismaModule } from '../prisma/prisma.module';
     PolicyEngineService,
     TrustScoringService,
     IntelligencePackService,
+    AdaptiveToolRegistryService,
   ],
 })
 export class VoiceModule {}
