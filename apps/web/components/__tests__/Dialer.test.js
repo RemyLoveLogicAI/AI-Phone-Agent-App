@@ -29,12 +29,38 @@ describe('Dialer', () => {
     await user.click(screen.getByLabelText('Dial 5'));
     await user.click(screen.getByLabelText('Dial 0'));
     await user.click(screen.getByLabelText('Dial 2'));
+    await user.click(screen.getByLabelText('Dial 7'));
+    await user.click(screen.getByLabelText('Dial 4'));
+    await user.click(screen.getByLabelText('Dial 8'));
+    await user.click(screen.getByLabelText('Dial 9'));
 
     const callButton = screen.getByLabelText('Call number');
     expect(callButton).not.toBeDisabled();
 
     await user.click(callButton);
 
-    expect(onCallStart).toHaveBeenCalledWith('502');
+    expect(onCallStart).toHaveBeenCalledWith('5027489');
+  });
+
+  it('keeps call disabled below the minimum length and normalizes pasted input', async () => {
+    const user = userEvent.setup();
+    const onCallStart = jest.fn();
+
+    render(<Dialer onCallStart={onCallStart} />);
+
+    const callButton = screen.getByLabelText('Call number');
+    const input = screen.getByLabelText('Dialer input');
+
+    await user.type(input, 'abc123!');
+    expect(input).toHaveValue('123');
+    expect(callButton).toBeDisabled();
+
+    await user.clear(input);
+    await user.type(input, '+1 (415) 555-0102 ext.99');
+    expect(input).toHaveValue('1415555010299');
+    expect(callButton).not.toBeDisabled();
+
+    await user.click(callButton);
+    expect(onCallStart).toHaveBeenCalledWith('1415555010299');
   });
 });

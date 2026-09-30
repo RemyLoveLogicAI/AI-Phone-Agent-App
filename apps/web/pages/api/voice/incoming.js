@@ -1,10 +1,10 @@
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'crypto';
 import VoiceResponse from 'twilio/lib/twiml/VoiceResponse';
 import { saveCallData } from '../../../lib/storage';
 
 export default function handler(req, res) {
   const twiml = new VoiceResponse();
-  const callSid = req.body.CallSid || `mock-${uuidv4()}`;
+  const callSid = req.body?.CallSid || `mock-${randomUUID()}`;
   const caller = req.body.From || 'Unknown';
 
   // Initialize call data

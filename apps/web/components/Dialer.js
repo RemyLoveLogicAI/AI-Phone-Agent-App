@@ -2,18 +2,36 @@ import { useState } from 'react';
 
 export default function Dialer({ onCallStart }) {
   const MAX_LENGTH = 15;
+  const MIN_LENGTH = 7;
   const [number, setNumber] = useState('');
   const [helperText, setHelperText] = useState('Start dialing or paste a number');
+  const isCallReady = number.length >= MIN_LENGTH;
+
+  const normalizeNumber = (value) => value.replace(/[^\d*#]/g, '').slice(0, MAX_LENGTH);
 
   const handleDigit = (digit) => {
     setNumber((prev) => {
       if (prev.length >= MAX_LENGTH) return prev;
       const nextValue = `${prev}${digit}`;
-      if (nextValue.length >= 3) {
+      if (nextValue.length >= MIN_LENGTH) {
         setHelperText('Ready to place a secure outbound call');
+      } else if (nextValue.length >= 3) {
+        setHelperText(`Enter at least ${MIN_LENGTH} digits to validate`);
       }
       return nextValue;
     });
+  };
+
+  const handleInputChange = (event) => {
+    const nextValue = normalizeNumber(event.target.value);
+    setNumber(nextValue);
+    if (!nextValue) {
+      setHelperText('Start dialing or paste a number');
+    } else if (nextValue.length < MIN_LENGTH) {
+      setHelperText(`Enter at least ${MIN_LENGTH} digits to validate`);
+    } else {
+      setHelperText('Ready to place a secure outbound call');
+    }
   };
 
   const handleBackspace = () => {
@@ -22,7 +40,9 @@ export default function Dialer({ onCallStart }) {
       if (updated.length === 0) {
         setHelperText('Start dialing or paste a number');
       } else if (updated.length < 3) {
-        setHelperText('Add a few more digits to validate');
+        setHelperText(`Add a few more digits to validate`);
+      } else if (updated.length < MIN_LENGTH) {
+        setHelperText(`Enter at least ${MIN_LENGTH} digits to validate`);
       }
       return updated;
     });
@@ -34,11 +54,11 @@ export default function Dialer({ onCallStart }) {
   };
 
   const handleCall = () => {
-    if (number) {
+    if (isCallReady) {
       onCallStart(number);
       setHelperText('Connecting to carrier...');
     } else {
-      setHelperText('Enter a full number before calling');
+      setHelperText(`Enter at least ${MIN_LENGTH} digits before calling`);
     }
   };
 
@@ -47,6 +67,20 @@ export default function Dialer({ onCallStart }) {
       <div className="display" aria-live="polite">
         {number || <span className="placeholder">Enter number...</span>}
       </div>
+
+      <label className="input-label" htmlFor="dialer-input">
+        Paste or edit number
+      </label>
+      <input
+        id="dialer-input"
+        className="dialer-input"
+        type="tel"
+        value={number}
+        onChange={handleInputChange}
+        placeholder="e.g. 4155550102"
+        inputMode="numeric"
+        aria-label="Dialer input"
+      />
 
       <div className="helper-row">
         <p className="helper-text">{helperText}</p>
@@ -75,7 +109,7 @@ export default function Dialer({ onCallStart }) {
         ))}
       </div>
 
-      <button className="call-button" onClick={handleCall} disabled={!number} aria-label="Call number">
+      <button className="call-button" onClick={handleCall} disabled={!isCallReady} aria-label="Call number">
         📞
       </button>
 
@@ -121,6 +155,31 @@ export default function Dialer({ onCallStart }) {
         .meta {
           font-family: monospace;
           color: #6ee7b7;
+        }
+
+        .input-label {
+          width: 100%;
+          font-size: 0.75rem;
+          text-transform: uppercase;
+          letter-spacing: 0.08em;
+          color: #6b7280;
+          margin-bottom: 0.35rem;
+        }
+
+        .dialer-input {
+          width: 100%;
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          border-radius: 12px;
+          padding: 0.65rem 1rem;
+          color: #e5e7eb;
+          margin-bottom: 1rem;
+        }
+
+        .dialer-input:focus {
+          outline: none;
+          border-color: var(--primary-glow);
+          box-shadow: 0 0 0 2px rgba(109, 40, 217, 0.2);
         }
 
         .controls {
