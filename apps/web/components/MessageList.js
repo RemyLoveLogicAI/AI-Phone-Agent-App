@@ -8,25 +8,88 @@ const buildConversations = (messages) => messages.reduce((acc, msg) => {
 }, {});
 
 const formatTime = (date) => new Date(date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+const getInitials = (contact) => {
+  if (!contact) return '?';
+  const words = contact.split(/[\s-]+/).filter(Boolean);
+  if (words.length > 1) {
+    return `${words[0][0]}${words[words.length - 1][0]}`.toUpperCase();
+  }
+  const alphanumeric = contact.replace(/[^a-zA-Z0-9]/g, '');
+  if (/[a-zA-Z]/.test(alphanumeric)) {
+    return alphanumeric.slice(0, 2).toUpperCase();
+  }
+  return alphanumeric.slice(-2) || contact.slice(0, 2).toUpperCase();
+};
 
 export default function MessageList({ messages }) {
   const [conversations, setConversations] = useState(() => buildConversations(messages));
   const [selectedContact, setSelectedContact] = useState(() => Object.keys(conversations)[0]);
   const [replyText, setReplyText] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [lastReadByContact, setLastReadByContact] = useState({});
 
   useEffect(() => {
     const next = buildConversations(messages);
-    setConversations(next);
-    if (!next[selectedContact]) {
-      setSelectedContact(Object.keys(next)[0]);
+    setConversations((prev) => {
+      const merged = { ...next };
+      Object.keys(prev).forEach((contact) => {
+        const localMsgs = (prev[contact] || []).filter(
+          (m) => m.id && String(m.id).startsWith('local-')
+        );
+        if (localMsgs.length > 0) {
+          merged[contact] = [...(merged[contact] || []), ...localMsgs];
+        }
+      });
+      return merged;
+    });
+    setSelectedContact((current) => {
+      const nextContacts = Object.keys(next);
+      if (!next[current] && nextContacts.length > 0) {
+        return nextContacts[0];
+      }
+      return current;
+    });
+  }, [messages]);
+
+  useEffect(() => {
+    if (selectedContact) {
+      const latestSeen = conversations[selectedContact]?.[conversations[selectedContact].length - 1]?.dateSent;
+      if (!latestSeen) return;
+      setLastReadByContact((prev) => {
+        const current = prev[selectedContact];
+        if (current && new Date(current) >= new Date(latestSeen)) {
+          return prev;
+        }
+        return { ...prev, [selectedContact]: latestSeen };
+      });
     }
-  }, [messages, selectedContact]);
+  }, [selectedContact, conversations]);
 
   const sortedContacts = useMemo(() => Object.keys(conversations).sort((a, b) => {
     const latestA = conversations[a]?.[conversations[a].length - 1]?.dateSent || 0;
     const latestB = conversations[b]?.[conversations[b].length - 1]?.dateSent || 0;
     return new Date(latestB) - new Date(latestA);
   }), [conversations]);
+
+  const visibleContacts = useMemo(() => {
+    if (!searchQuery) return sortedContacts;
+    const query = searchQuery.toLowerCase();
+    return sortedContacts.filter((contact) => contact.toLowerCase().includes(query));
+  }, [searchQuery, sortedContacts]);
+
+  const unreadCounts = useMemo(() => {
+    const counts = {};
+    Object.keys(conversations).forEach((contact) => {
+      const lastReadAt = lastReadByContact[contact] ? new Date(lastReadByContact[contact]) : null;
+      const inboundCount = conversations[contact].filter((msg) => {
+        if (msg.direction !== 'inbound') return false;
+        if (!lastReadAt) return true;
+        return new Date(msg.dateSent) > lastReadAt;
+      }).length;
+      counts[contact] = inboundCount;
+    });
+    return counts;
+  }, [conversations, lastReadByContact]);
 
   const handleSend = () => {
     if (!replyText || !selectedContact) return;
@@ -49,25 +112,39 @@ export default function MessageList({ messages }) {
     <div className="messages-container glass-panel">
       <div className="sidebar">
         <h3>Messages</h3>
+        <div className="search">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+            placeholder="Search contacts"
+            aria-label="Search contacts"
+          />
+        </div>
         <div className="contact-list">
-          {sortedContacts.length === 0 ? (
-            <p className="empty-state">No messages yet.</p>
+          {visibleContacts.length === 0 ? (
+            <p className="empty-state">{searchQuery ? 'No matching contacts.' : 'No messages yet.'}</p>
           ) : (
-            sortedContacts.map(contact => (
+            visibleContacts.map(contact => {
+              const latestMessage = conversations[contact][conversations[contact].length - 1];
+              const unreadCount = unreadCounts[contact] || 0;
+              return (
               <div
                 key={contact}
                 className={`contact-item ${selectedContact === contact ? 'active' : ''}`}
                 onClick={() => setSelectedContact(contact)}
               >
-                <div className="avatar">{contact[2]}</div>
+                <div className="avatar">{getInitials(contact)}</div>
                 <div className="info">
                   <p className="name">{contact}</p>
                   <p className="preview">
-                    {conversations[contact][0].body.substring(0, 20)}...
+                    {latestMessage?.body ? `${latestMessage.body.substring(0, 24)}...` : 'No messages yet.'}
                   </p>
                 </div>
+                {unreadCount > 0 && <span className="badge">{unreadCount}</span>}
               </div>
-            ))
+              );
+            })
           )}
         </div>
       </div>
@@ -76,7 +153,7 @@ export default function MessageList({ messages }) {
         {selectedContact ? (
           <>
             <div className="chat-header">
-              <div className="avatar-small">{selectedContact[2]}</div>
+              <div className="avatar-small">{getInitials(selectedContact)}</div>
               <h4>{selectedContact}</h4>
               <span className="pill">{conversations[selectedContact]?.length || 0} msgs</span>
             </div>
@@ -133,6 +210,21 @@ export default function MessageList({ messages }) {
           border-bottom: 1px solid rgba(255,255,255,0.1);
         }
 
+        .search {
+          padding: 0.75rem 1rem;
+          border-bottom: 1px solid rgba(255,255,255,0.08);
+        }
+
+        .search input {
+          width: 100%;
+          background: rgba(255,255,255,0.05);
+          border: 1px solid rgba(255,255,255,0.1);
+          padding: 0.5rem 0.75rem;
+          border-radius: 12px;
+          color: white;
+          outline: none;
+        }
+
         .contact-list {
           flex: 1;
           overflow-y: auto;
@@ -181,6 +273,16 @@ export default function MessageList({ messages }) {
         .info .preview {
           font-size: 0.8rem;
           color: #888;
+        }
+
+        .badge {
+          background: #22c55e;
+          color: #0f172a;
+          font-weight: 700;
+          font-size: 0.7rem;
+          padding: 0.2rem 0.4rem;
+          border-radius: 999px;
+          margin-left: auto;
         }
 
         .chat-area {
