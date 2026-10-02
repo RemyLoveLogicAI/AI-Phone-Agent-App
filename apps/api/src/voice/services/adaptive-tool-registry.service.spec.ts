@@ -68,6 +68,60 @@ describe("AdaptiveToolRegistryService", () => {
     ).toThrow("collide after canonicalization");
   });
 
+  it("rejects cross-connector canonical name collisions", () => {
+    const registry = new AdaptiveToolRegistryService();
+    registry.register({
+      ...manifest,
+      id: "a",
+      tools: [{ ...manifest.tools[0], name: "_b" }],
+    });
+    expect(() =>
+      registry.register({
+        ...manifest,
+        id: "a_",
+        tools: [{ ...manifest.tools[0], name: "b" }],
+      }),
+    ).toThrow("cross-connector collision");
+    // The first connector's tool still resolves — no silent overwrite.
+    expect(registry.resolve("a___b")?.tool.name).toBe("_b");
+  });
+
+  it("rejects cross-connector collisions regardless of registration order", () => {
+    const registry = new AdaptiveToolRegistryService();
+    registry.register({
+      ...manifest,
+      id: "a_",
+      tools: [{ ...manifest.tools[0], name: "b" }],
+    });
+    expect(() =>
+      registry.register({
+        ...manifest,
+        id: "a",
+        tools: [{ ...manifest.tools[0], name: "_b" }],
+      }),
+    ).toThrow("cross-connector collision");
+  });
+
+  it("leaves the registry untouched when a cross-connector registration is rejected", () => {
+    const registry = new AdaptiveToolRegistryService();
+    registry.register({
+      ...manifest,
+      id: "a",
+      tools: [{ ...manifest.tools[0], name: "_b" }],
+    });
+    expect(() =>
+      registry.register({
+        ...manifest,
+        id: "a_",
+        tools: [{ ...manifest.tools[0], name: "b" }],
+      }),
+    ).toThrow("cross-connector collision");
+    expect(registry.list().map((c) => c.id)).toEqual(["a"]);
+    expect(registry.resolve("a___b")).toMatchObject({
+      tool: { name: "_b" },
+    });
+  });
+
   it("resolves tools for uppercase connector ids", () => {
     const registry = new AdaptiveToolRegistryService();
     const [tool] = registry.register({ ...manifest, id: "Poke" });
