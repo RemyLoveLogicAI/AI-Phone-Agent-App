@@ -34,6 +34,10 @@ export const configSchema = z.object({
   // Logging
   LOG_LEVEL: z.enum(['error', 'warn', 'info', 'debug']).default('info'),
   ENABLE_EVENT_LOGGING: z.coerce.boolean().default(true),
+
+  // Connector admin (voice/connectors routes). When unset, those routes
+  // fail closed (401) instead of running unauthenticated.
+  VOICE_CONNECTORS_API_KEY: z.string().min(16).optional(),
 });
 
 export type Config = z.infer<typeof configSchema>;
