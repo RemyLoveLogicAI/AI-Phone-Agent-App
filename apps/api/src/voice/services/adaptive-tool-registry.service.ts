@@ -52,6 +52,20 @@ export class AdaptiveToolRegistryService {
         this.aliases.delete(this.canonicalName(previous.id, tool.name));
       }
     }
+    // Cross-connector collision guard: the canonical encoding is lossy, so two
+    // DIFFERENT connectors can produce the same canonical name (e.g. connector
+    // "a_" + tool "b" vs connector "a" + tool "_b" both yield "a___b").
+    // Silently overwriting the alias would route invocations to the wrong
+    // tool, so the registration is rejected loudly instead.
+    for (const tool of copy.tools) {
+      const canonical = this.canonicalName(copy.id, tool.name);
+      const existing = this.aliases.get(canonical);
+      if (existing) {
+        throw new BadRequestException(
+          `Canonical name '${canonical}' is already registered by connector '${existing.connectorId}'; rename the connector or tool to avoid the cross-connector collision`,
+        );
+      }
+    }
     this.connectors.set(copy.id, copy);
 
     for (const tool of copy.tools) {
