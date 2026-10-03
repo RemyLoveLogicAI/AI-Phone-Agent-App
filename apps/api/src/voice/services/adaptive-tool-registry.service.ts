@@ -17,7 +17,6 @@ export interface AdaptiveConnectorManifest {
   transport: "mcp-http" | "webhook";
   endpoint: string;
   tools: AdaptiveToolDefinition[];
-}
 
 export interface AdaptedVoiceTool extends AdaptiveToolDefinition {
   canonicalName: string;
@@ -51,8 +50,6 @@ export class AdaptiveToolRegistryService {
     // "a_" + tool "b" vs connector "a" + tool "_b" both yield "a___b").
     // Silently overwriting the alias would route invocations to the wrong
     // tool, so the registration is rejected loudly instead. Aliases owned by
-    // this same connector are excluded: a replace intentionally reclaims its
-    // own names. Aliases owned by
     // this same connector are excluded: a replace intentionally reclaims its
     // own names.
     for (const tool of copy.tools) {
