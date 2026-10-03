@@ -17,6 +17,7 @@ export interface AdaptiveConnectorManifest {
   transport: "mcp-http" | "webhook";
   endpoint: string;
   tools: AdaptiveToolDefinition[];
+}
 
 export interface AdaptedVoiceTool extends AdaptiveToolDefinition {
   canonicalName: string;
