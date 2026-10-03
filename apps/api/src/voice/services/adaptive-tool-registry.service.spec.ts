@@ -122,6 +122,32 @@ describe("AdaptiveToolRegistryService", () => {
     });
   });
 
+  it("leaves the replaced connector intact when a replacement collides cross-connector", () => {
+    const registry = new AdaptiveToolRegistryService();
+    registry.register({
+      ...manifest,
+      id: "a_",
+      tools: [{ ...manifest.tools[0], name: "b" }],
+    });
+    registry.register({
+      ...manifest,
+      id: "a",
+      tools: [{ ...manifest.tools[0], name: "solo" }],
+    });
+    expect(() =>
+      registry.register({
+        ...manifest,
+        id: "a",
+        tools: [{ ...manifest.tools[0], name: "_b" }],
+      }),
+    ).toThrow("cross-connector collision");
+    // The failed replacement changed nothing: "a" still serves its original
+    // tool and "a_"/"b" is untouched.
+    expect(registry.resolve("a__solo")?.tool.name).toBe("solo");
+    expect(registry.resolve("a___b")?.tool.name).toBe("b");
+    expect(registry.list().map((c) => c.id).sort()).toEqual(["a", "a_"]);
+  });
+
   it("resolves tools for uppercase connector ids", () => {
     const registry = new AdaptiveToolRegistryService();
     const [tool] = registry.register({ ...manifest, id: "Poke" });

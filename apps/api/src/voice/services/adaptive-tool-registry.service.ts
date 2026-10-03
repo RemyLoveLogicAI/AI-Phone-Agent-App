@@ -46,24 +46,31 @@ export class AdaptiveToolRegistryService {
     // Connector identity is case-insensitive: canonical names are lowercase,
     // so the stored id must be too, or resolve() can never find the connector.
     copy.id = copy.id.toLowerCase();
-    const previous = this.connectors.get(copy.id);
-    if (previous) {
-      for (const tool of previous.tools) {
-        this.aliases.delete(this.canonicalName(previous.id, tool.name));
-      }
-    }
     // Cross-connector collision guard: the canonical encoding is lossy, so two
     // DIFFERENT connectors can produce the same canonical name (e.g. connector
     // "a_" + tool "b" vs connector "a" + tool "_b" both yield "a___b").
     // Silently overwriting the alias would route invocations to the wrong
-    // tool, so the registration is rejected loudly instead.
+    // tool, so the registration is rejected loudly instead. Aliases owned by
+    // this same connector are excluded: a replace intentionally reclaims its
+    // own names. Aliases owned by
+    // this same connector are excluded: a replace intentionally reclaims its
+    // own names.
     for (const tool of copy.tools) {
       const canonical = this.canonicalName(copy.id, tool.name);
       const existing = this.aliases.get(canonical);
-      if (existing) {
+      if (existing && existing.connectorId !== copy.id) {
         throw new BadRequestException(
           `Canonical name '${canonical}' is already registered by connector '${existing.connectorId}'; rename the connector or tool to avoid the cross-connector collision`,
         );
+      }
+    }
+    // Preflight passed: now it is safe to mutate. Drop the previous alias set
+    // (if any) before installing the new one, so a replace never leaves stale
+    // names behind.
+    const previous = this.connectors.get(copy.id);
+    if (previous) {
+      for (const tool of previous.tools) {
+        this.aliases.delete(this.canonicalName(previous.id, tool.name));
       }
     }
     this.connectors.set(copy.id, copy);
