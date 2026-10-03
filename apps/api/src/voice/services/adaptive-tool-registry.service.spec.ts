@@ -47,4 +47,164 @@ describe("AdaptiveToolRegistryService", () => {
       }),
     ).toThrow("HTTPS");
   });
+
+  // --- PR #10 review fixes ---
+
+  it("rejects tool names that collide after canonicalization", () => {
+    const registry = new AdaptiveToolRegistryService();
+    expect(() =>
+      registry.register({
+        ...manifest,
+        tools: [
+          manifest.tools[0],
+          {
+            name: "calendar_create",
+            description: "Underscore twin",
+            inputSchema: { type: "object" },
+            risk: "read" as const,
+          },
+        ],
+      }),
+    ).toThrow("collide after canonicalization");
+  });
+
+  it("rejects cross-connector canonical name collisions", () => {
+    const registry = new AdaptiveToolRegistryService();
+    registry.register({
+      ...manifest,
+      id: "a",
+      tools: [{ ...manifest.tools[0], name: "_b" }],
+    });
+    expect(() =>
+      registry.register({
+        ...manifest,
+        id: "a_",
+        tools: [{ ...manifest.tools[0], name: "b" }],
+      }),
+    ).toThrow("cross-connector collision");
+    // The first connector's tool still resolves — no silent overwrite.
+    expect(registry.resolve("a___b")?.tool.name).toBe("_b");
+  });
+
+  it("rejects cross-connector collisions regardless of registration order", () => {
+    const registry = new AdaptiveToolRegistryService();
+    registry.register({
+      ...manifest,
+      id: "a_",
+      tools: [{ ...manifest.tools[0], name: "b" }],
+    });
+    expect(() =>
+      registry.register({
+        ...manifest,
+        id: "a",
+        tools: [{ ...manifest.tools[0], name: "_b" }],
+      }),
+    ).toThrow("cross-connector collision");
+  });
+
+  it("leaves the registry untouched when a cross-connector registration is rejected", () => {
+    const registry = new AdaptiveToolRegistryService();
+    registry.register({
+      ...manifest,
+      id: "a",
+      tools: [{ ...manifest.tools[0], name: "_b" }],
+    });
+    expect(() =>
+      registry.register({
+        ...manifest,
+        id: "a_",
+        tools: [{ ...manifest.tools[0], name: "b" }],
+      }),
+    ).toThrow("cross-connector collision");
+    expect(registry.list().map((c) => c.id)).toEqual(["a"]);
+    expect(registry.resolve("a___b")).toMatchObject({
+      tool: { name: "_b" },
+    });
+  });
+
+  it("leaves the replaced connector intact when a replacement collides cross-connector", () => {
+    const registry = new AdaptiveToolRegistryService();
+    registry.register({
+      ...manifest,
+      id: "a_",
+      tools: [{ ...manifest.tools[0], name: "b" }],
+    });
+    registry.register({
+      ...manifest,
+      id: "a",
+      tools: [{ ...manifest.tools[0], name: "solo" }],
+    });
+    expect(() =>
+      registry.register({
+        ...manifest,
+        id: "a",
+        tools: [{ ...manifest.tools[0], name: "_b" }],
+      }),
+    ).toThrow("cross-connector collision");
+    // The failed replacement changed nothing: "a" still serves its original
+    // tool and "a_"/"b" is untouched.
+    expect(registry.resolve("a__solo")?.tool.name).toBe("solo");
+    expect(registry.resolve("a___b")?.tool.name).toBe("b");
+    expect(registry.list().map((c) => c.id).sort()).toEqual(["a", "a_"]);
+  });
+
+  it("resolves tools for uppercase connector ids", () => {
+    const registry = new AdaptiveToolRegistryService();
+    const [tool] = registry.register({ ...manifest, id: "Poke" });
+    expect(tool.connectorId).toBe("poke");
+    expect(registry.resolve(tool.canonicalName)?.tool.name).toBe(
+      "calendar.create",
+    );
+    expect(registry.unregister("POKE")).toBe(true);
+  });
+
+  it("rejects connector ids containing the canonical separator", () => {
+    const registry = new AdaptiveToolRegistryService();
+    expect(() => registry.register({ ...manifest, id: "my__conn" })).toThrow(
+      "__",
+    );
+  });
+
+  it("rejects endpoints with embedded credentials", () => {
+    const registry = new AdaptiveToolRegistryService();
+    expect(() =>
+      registry.register({
+        ...manifest,
+        endpoint: "https://user:pass@connector.example.com/mcp",
+      }),
+    ).toThrow("must not embed credentials");
+  });
+
+  it("allows HTTP only for localhost endpoints", () => {
+    const registry = new AdaptiveToolRegistryService();
+    expect(() =>
+      registry.register({ ...manifest, endpoint: "ftp://localhost/mcp" }),
+    ).toThrow("HTTPS");
+    expect(() =>
+      registry.register({ ...manifest, endpoint: "http://localhost:4010/mcp" }),
+    ).not.toThrow();
+  });
+
+  it("rejects tools missing required metadata instead of crashing", () => {
+    const registry = new AdaptiveToolRegistryService();
+    expect(() =>
+      registry.register({
+        ...manifest,
+        tools: [{ name: "bare", risk: "read" } as never],
+      }),
+    ).toThrow("description");
+    expect(() =>
+      registry.register({ ...manifest, tools: [null as never] }),
+    ).toThrow("must be an object");
+  });
+
+  it("throws BadRequestException (HTTP 400) for invalid manifests", () => {
+    const registry = new AdaptiveToolRegistryService();
+    try {
+      registry.register({ ...manifest, endpoint: "not a url" });
+      throw new Error("expected register to throw");
+    } catch (error) {
+      expect((error as { getStatus?: () => number }).getStatus?.()).toBe(400);
+    }
+  });
 });
