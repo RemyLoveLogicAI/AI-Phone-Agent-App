@@ -8,6 +8,7 @@ import { TrustScoringService } from "./services/trust-scoring.service";
 import { IntelligencePackService } from "./services/intelligence-pack.service";
 import { PrismaModule } from "../prisma/prisma.module";
 import { AdaptiveToolsController } from "./adaptive-tools.controller";
+import { ApiKeyGuard } from "./guards/api-key.guard";
 import { AdaptiveToolRegistryService } from "./services/adaptive-tool-registry.service";
 
 /**
@@ -32,6 +33,7 @@ import { AdaptiveToolRegistryService } from "./services/adaptive-tool-registry.s
     TrustScoringService,
     IntelligencePackService,
     AdaptiveToolRegistryService,
+    ApiKeyGuard,
   ],
   exports: [
     VoiceStreamGateway,
